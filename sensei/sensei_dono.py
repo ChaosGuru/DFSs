@@ -1,12 +1,15 @@
 import pickle
 import os
 import logging
+from copy import deepcopy
 
 import rpyc
 from rpyc.utils.server import ThreadedServer
 
 logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger("sensei-dono")
+
+logging.getLogger("SENSEI/33333").propagate = False
 
 
 class SenseiService(rpyc.Service):
@@ -76,10 +79,9 @@ class SenseiService(rpyc.Service):
 
     def exposed_create_directory(self, directory, path):
         path_obj = self.get_path_obj(path)
-        if not path_obj:
-            # custom error
-            return False
-        if not self.valid_name(directory):
+
+        if not path_obj or not self.valid_name(directory) \
+                or directory in path_obj.keys():
             # custom error
             return False
 
@@ -87,6 +89,14 @@ class SenseiService(rpyc.Service):
         path_obj[directory] = {}
         
         return True
+
+    def exposed_get_dirs_and_files(self, path):
+        path_obj = self.get_path_obj(path)
+
+        if not path_obj:
+            return None
+        
+        return list(path_obj.keys())
 
     def remove_directory(self, path):
         pass
@@ -96,9 +106,6 @@ class SenseiService(rpyc.Service):
 
     def get_file(self, path):
         pass
-
-    def exposed_get_files(self):
-        return self.files
 
     def on_disconnect(self, conn):
         self.save_snapshot()

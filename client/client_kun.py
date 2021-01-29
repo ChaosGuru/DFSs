@@ -30,7 +30,14 @@ def main():
 @main.command()
 def ls():
     """Prints content of working directory"""
-    pass
+    # pass
+
+    sensei = get_sensei()
+    data = get_cache()
+    res = sensei.get_dirs_and_files(data["pwd"])
+
+    for l in res:
+        print(l, end=' ')
 
 
 @main.command()
@@ -38,7 +45,6 @@ def pwd():
     """Prints working directory"""
     
     data = get_cache()
-
     click.echo(data["pwd"])
 
 
@@ -55,15 +61,6 @@ def mkdir(name):
     else:
         click.echo("""Error! Failed to create directory. 
             Check if you entered directory name correctly""")
-
-
-# temp
-@main.command()
-def files():
-    sensei = get_sensei()
-    ns = sensei.get_files()
-
-    print(ns)
 
 
 if __name__=="__main__":
