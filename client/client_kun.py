@@ -1,19 +1,30 @@
 import logging
+import json
 
 import click
+import rpyc
+
+
+def get_sensei():
+    return rpyc.connect("localhost", 33333).root
+
+
+def save_cache(data):
+    with open("cache.json", "w") as f:
+        json.dump(data, f)
+
+
+def get_cache():
+    with open("cache.json", "r") as f:
+        data = json.load(f)
+
+    return data
 
 
 @click.group()
 def main():
-    """ Simple CLI that will greet you"""
+    """CLI for client DFS"""
     pass
-
-
-@main.command()
-@click.argument('name')
-def greet(name):
-    """This will greet you back with your name"""
-    click.echo("Hello, " + name)
 
 
 @main.command()
@@ -25,4 +36,35 @@ def ls():
 @main.command()
 def pwd():
     """Prints working directory"""
-    pass
+    
+    data = get_cache()
+
+    click.echo(data["pwd"])
+
+
+@main.command()
+@click.argument("name")
+def mkdir(name):
+    """Create directory on current pwd with the <name>"""
+
+    data = get_cache()
+    
+    sensei = get_sensei()
+    if sensei.create_directory(name, data["pwd"]):
+        click.echo("Directory created succesfully!")
+    else:
+        click.echo("""Error! Failed to create directory. 
+            Check if you entered directory name correctly""")
+
+
+# temp
+@main.command()
+def files():
+    sensei = get_sensei()
+    ns = sensei.get_files()
+
+    print(ns)
+
+
+if __name__=="__main__":
+    main()
