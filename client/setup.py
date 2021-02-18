@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(
-    name='client-kun',
+    name='client_kun',
     version='0.1',
     py_modules=['client_kun'],
     install_requires=[
@@ -9,6 +9,6 @@ setup(
     ],
     entry_points='''
         [console_scripts]
-        client-kun=client_kun:main
+        client-kun=client_kun:dfs
     '''
 )
