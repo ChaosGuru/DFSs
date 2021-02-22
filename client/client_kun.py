@@ -5,8 +5,7 @@ import os
 import click
 import rpyc
 
-CACHE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 
-                          "cache.json")
+CACHE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "cache.json")
 
 
 def get_sensei():
@@ -34,11 +33,8 @@ def get_cache():
 
 
 def new_user():
-    cache = {
-        "pwd": "/",
-        "user": "temp"
-    }
-    
+    cache = {"pwd": "/", "user": "temp"}
+
     save_cache(cache)
 
 
@@ -51,53 +47,89 @@ def dfs():
 
 @dfs.command()
 def pwd():
+    """Prints current directory"""
     data = get_cache()
     click.echo(data["pwd"])
 
 
 @dfs.command()
-@click.argument("file", default="")
-def ls(file):
+@click.argument("dir", default="")
+def ls(dir):
+    """Prints directories and files"""
     sensei = get_sensei()
 
     if sensei:
         data = get_cache()
-        res = sensei.get_namespaces(data["pwd"]+file)
+        res = sensei.get_namespaces(data["pwd"] + dir)
+        res = [r.replace(data["pwd"], "", 1).lstrip("/").split("/")[0] 
+            for r in res]
 
         if res:
-            print(' '.join(res))
+            click.echo(" ".join(set(res)))
+
+
+@dfs.command()
+@click.argument("dir", default="")
+def tree(dir):
+    """Print directory tree"""
+    sensei = get_sensei()
+
+    if sensei:
+        data = get_cache()
+        res = sensei.get_namespaces(data["pwd"] + dir)
+
+        if res:
+            click.echo("\n".join(sorted(res)))
 
 
 @dfs.command()
 @click.argument("name")
 def mkdir(name):
+    """Creates new directory"""
     data = get_cache()
-    
     sensei = get_sensei()
+    dir_name = data["pwd"].rstrip("/") + "/" + name
+
     if sensei:
-        if sensei.create_namespaces(data["pwd"], name):
-            click.echo("Directory created succesfully!")
+        if sensei.create_directory(dir_name):
+            click.echo(dir_name)
         else:
-            click.echo('\n'.join([
-                "Error! Failed to create directory.",
-                "Check if you entered directory name correctly"
-            ]))
+            click.echo(
+                "\n".join(
+                    [
+                        "Error! Failed to create directory.",
+                    ]
+                )
+            )
 
 
 @dfs.command()
 @click.argument("path")
 def cd(path):
+    """Changes working directory"""
     cache = get_cache()
     sensei = get_sensei()
 
     if sensei:
-        if sensei.exists(cache["pwd"] + path):
-            cache["pwd"] = cache["pwd"] + path
-            save_cache(cache)
-            click.echo("Current path: {}".format(cache["pwd"]))
+        if path == "/":
+            cache["pwd"] = "/"
+        elif path == "..":
+            cache["pwd"] = "/" + "/".join(cache["pwd"].split("/")[:-1]).lstrip("/")
+        elif sensei.exists(cache["pwd"].rstrip("/") + "/" + path):
+            cache["pwd"] = cache["pwd"].rstrip("/") + "/" + path
         else:
             click.echo("Error! Path do not exists!")
 
+        save_cache(cache)
+        click.echo(cache["pwd"])
 
-if __name__=="__main__":
+
+@dfs.command
+@click.argument("path")
+def rm(path):
+    """Removes namespace"""
+    pass
+
+
+if __name__ == "__main__":
     dfs()

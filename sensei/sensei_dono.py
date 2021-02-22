@@ -24,8 +24,9 @@ class SenseiService(rpyc.Service):
     def __init__(self):
         log.debug("Creating sensei object")
 
-        self.SNAPSHOTS = os.path.join(os.path.dirname(os.path.realpath(__file__)), 
-                                 "snapshots")
+        self.SNAPSHOTS = os.path.join(
+            os.path.dirname(os.path.realpath(__file__)), "snapshots"
+        )
 
         self.files = {}
         self.chunk_locations = {}
@@ -33,7 +34,7 @@ class SenseiService(rpyc.Service):
         self.load_snapshot()
 
     def save_snapshot(self):
-        """Save snaphot of filesystem to a file (temporary). 
+        """Save snaphot of filesystem to a file (temporary).
         Later change to save to backup server.
         Also change to save snapshot periodically.
         """
@@ -59,20 +60,31 @@ class SenseiService(rpyc.Service):
             with open(snapshot1, "rb") as f:
                 self.files = pickle.load(f)
 
-    def exposed_create_namespaces(self, path, directory):
-        log.info(f"Creating directory '{directory}' on path {path}")
+    def valid_path(self, path):
+        if path.count("//") > 0:
+            return False
 
-        self.files[path+directory] = {}
-        
         return True
 
+    def exposed_create_directory(self, path):
+        log.info(f"Creating directory {path}")
+
+        if not self.valid_path(path) or path.rstrip("/") in self.files:
+            return False
+
+        self.files[path.rstrip("/")] = {}
+        return path.rstrip("/")
+
     def exposed_get_namespaces(self, path="/"):
-        return [ns for ns in self.files.keys() if not ns.startswith('/hidden')]
+        return [
+            ns for ns in self.files.keys()
+            if not ns.startswith("/hidden") and ns.startswith(path.rstrip('/') + '/')
+        ]
 
     def exposed_remove_namespaces(self, path):
-        for ns in self.files.keys():
-            if ns.startswith(path) and not ns.startswith('/hidden'):
-                self.files['/hidden' + ns] = self.files[ns]
+        for ns in [key for key in self.files]:
+            if ns.startswith(path) and not ns.startswith("/hidden"):
+                self.files["/hidden" + ns] = self.files[ns]
                 del self.files[ns]
 
     def exposed_exists(self, path):
@@ -81,7 +93,7 @@ class SenseiService(rpyc.Service):
     # temp
     def collect_garbage(self):
         log.info("Collecting garbage...")
-        for key in [key for key in self.files if key.startswith('/hidden')]:
+        for key in [key for key in self.files if key.startswith("/hidden")]:
             del self.files[key]
 
     def on_disconnect(self, conn):
@@ -90,6 +102,6 @@ class SenseiService(rpyc.Service):
         self.save_snapshot()
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
     server = ThreadedServer(SenseiService(), port=33333)
     server.start()
