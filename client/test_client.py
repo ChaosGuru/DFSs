@@ -16,23 +16,14 @@ def test_pwd(client):
     runner = CliRunner()
     result = runner.invoke(client_kun.dfs, ["pwd"])
 
-    assert result.output.strip('\n') == client.get_cache()["pwd"]
-
-
-def test_ls(sensei, client):
-    runner = CliRunner()
-    result = runner.invoke(client_kun.dfs, ["ls"])
-
-    # temp
-    assert result.output.strip('\n') == \
-        ' '.join(sensei.get_namespaces(client.get_cache()["pwd"]))
+    assert result.output.strip("\n") == client.get_cache()["pwd"]
 
 
 def test_mkdir(sensei, client):
     runner = CliRunner()
     runner.invoke(client_kun.mkdir, ["mkdir_test"])
 
-    assert "/mkdir_test" in sorted(sensei.get_namespaces('/'))
+    assert "/mkdir_test" in sorted(sensei.get_namespaces("/"))
 
 
 def test_cd(client):
@@ -42,6 +33,7 @@ def test_cd(client):
 
     assert client.get_cache()["pwd"] == "/cd_test"
 
+
 def test_cd_root(client):
     runner = CliRunner()
     runner.invoke(client_kun.mkdir, ["cd_test_root"])
@@ -49,6 +41,7 @@ def test_cd_root(client):
     runner.invoke(client_kun.cd, ["/"])
 
     assert client.get_cache()["pwd"] == "/"
+
 
 def test_cd_parent(client):
     runner = CliRunner()
@@ -70,5 +63,24 @@ def test_cd_fail(client):
     runner.invoke(client_kun.cd, ["/"])
 
 
-def test_remove_dir(client):
-    assert 0
+def test_ls(client):
+    runner = CliRunner()
+    runner.invoke(client_kun.mkdir, ["ls_test"])
+    runner.invoke(client_kun.cd, ["ls_test"])
+    runner.invoke(client_kun.mkdir, ["ls_test2"])
+
+    result = runner.invoke(client_kun.dfs, ["ls"])
+
+    assert result.output.strip("\n") == "ls_test2"
+        
+
+def test_rm(client):
+    runner = CliRunner()
+    runner.invoke(client_kun.mkdir, ["rm_test"])
+    runner.invoke(client_kun.cd, ["rm_test"])
+    runner.invoke(client_kun.mkdir, ["rm_test2"])
+    runner.invoke(client_kun.rm, ["rm_test2"])
+
+    result = runner.invoke(client_kun.dfs, ["ls"])
+
+    assert result.output.strip("\n") == ""

@@ -5,6 +5,6 @@ import rpyc
 def sensei():
     conn = rpyc.connect("localhost", 33333).root
     yield conn
-    conn.remove_namespaces('/')
+    conn.remove_namespaces("/")
 
     print("\n-----TEARDOWN-----")

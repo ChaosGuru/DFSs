@@ -1,0 +1,2 @@
+This file is created purely for testing. 
+It means that the only purpose of its existance is to test my programm.
