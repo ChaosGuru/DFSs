@@ -5,6 +5,7 @@ import math
 import uuid
 from copy import deepcopy
 from pprint import pprint
+from datetime import datetime
 
 import rpyc
 from rpyc.utils.server import ThreadedServer
@@ -33,16 +34,32 @@ class SenseiService(rpyc.Service):
         self.files = {}
         self.chunk_locations = {}
         self.chunk_servers = {
-            ("localhost", 40001): {"chunks": 1},
-            ("localhost", 40002): {"chunks": 1},
-            ("localhost", 40003): {"chunks": 1},
-            ("localhost", 40004): {"chunks": 1},
+            ("localhost", 40001): {"chunks": 0},
+            # ("localhost", 40002): {"chunks": 0},
+            # ("localhost", 40003): {"chunks": 0},
+            # ("localhost", 40004): {"chunks": 0},
         }
 
-        self.chunk_size = 64_000
+        # self.chunk_size = 64_000_000
+        self.chunk_size = 500
         self.replica_factor = 3
 
         self.load_snapshot()
+
+    def get_chunk(self, ip, port):
+        try:
+            return rpyc.connect(ip, port).root
+        except ConnectionRefusedError:
+            log.error("Chunk refused connection")
+
+    def diagnostic(self):
+        log.info("Chunk servers diagnostic")
+
+        for chunk in self.chunk_servers:
+            chunk_server = self.get_chunk(*chunk)
+            state = chunk_server.get_state()
+
+            self.chunk_servers[chunk].update({a:state[a] for a in list(state)})
 
     def save_snapshot(self):
         """Save snaphot of filesystem to a file (temporary).
@@ -55,7 +72,7 @@ class SenseiService(rpyc.Service):
         snapshot1 = os.path.join(self.SNAPSHOTS, "snapshot1.dat")
 
         with open(snapshot1, "wb") as f:
-            pickle.dump(self.files, f)
+            pickle.dump((self.files, self.chunk_locations), f)
 
     def load_snapshot(self):
         """Loads snapshot of a filesystem from a file.
@@ -69,7 +86,7 @@ class SenseiService(rpyc.Service):
 
         if os.path.exists(snapshot1):
             with open(snapshot1, "rb") as f:
-                self.files = pickle.load(f)
+                self.files, self.chunk_locations = pickle.load(f)
 
     def valid_path(self, path):
         if path.count("//") > 0:
@@ -78,7 +95,7 @@ class SenseiService(rpyc.Service):
         return True
     
     def alloc_chunks(self, num):
-        log.info("Allocation chunks")
+        log.info("Allocating chunks")
 
         chunk_servers = sorted(self.chunk_servers, 
                                key=lambda x: self.chunk_servers[x]["chunks"])
@@ -91,7 +108,7 @@ class SenseiService(rpyc.Service):
     def exposed_write_file(self, path, size):
         log.info(f"Write file on path {path} with size {size}")
 
-        self.exposed_create_directory(path)
+        self.exposed_create_directory(path, force=True)
 
         # add chunkuuids for each chunk
         for i in range(math.ceil(size/self.chunk_size)):
@@ -116,16 +133,16 @@ class SenseiService(rpyc.Service):
         
         chunks_locs = {ch: self.chunk_locations[ch] for ch in chunks_uuid}
 
-        
-        # log.debug("Chunk location:\n", chunks_locs)
-
         return chunks_locs
 
-    def exposed_create_directory(self, path):
+    def exposed_create_directory(self, path, force=False):
         log.info(f"Creating directory {path}")
 
+        if force:
+            self.exposed_remove_namespaces(path)
+
         if not self.valid_path(path) or path.rstrip("/") in self.files:
-            return False
+            return None
 
         self.files[path.rstrip("/")] = {}
         return path.rstrip("/")
@@ -137,9 +154,12 @@ class SenseiService(rpyc.Service):
         ]
 
     def exposed_remove_namespaces(self, path):
+        log.info(f"Removing namespace {path}")
+
         for ns in [key for key in self.files]:
             if ns.startswith(path) and not ns.startswith("/hidden"):
-                self.files["/hidden" + ns] = self.files[ns]
+                name = "/hidden" + ns + datetime.today().strftime("-%Y-%m-%d")
+                self.files[name] = self.files[ns]
                 del self.files[ns]
 
     def exposed_exists(self, path):
@@ -148,13 +168,25 @@ class SenseiService(rpyc.Service):
     # temp
     def collect_garbage(self):
         log.info("Collecting garbage...")
+
         for key in [key for key in self.files if key.startswith("/hidden")]:
+            log.info(f"Deleting {key}...")
+
+            for chunk in self.files[key].values():
+                del self.chunk_locations[chunk]
+
             del self.files[key]
 
     def on_disconnect(self, conn):
-        pprint(self.files)
+        log.info("♦♦♦♦♦♦♦♦♦♦DISCONNECTION♦♦♦♦♦♦♦♦♦♦")
+
+        # self.diagnostic()
         self.collect_garbage()
         self.save_snapshot()
+
+        pprint(self.files)
+        pprint(self.chunk_locations)
+        pprint(self.chunk_servers)
 
 
 if __name__ == "__main__":

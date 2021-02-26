@@ -29,20 +29,33 @@ class ChunkService(rpyc.Service):
         log.info(f"Writing chunk {str(chunk_uuid)}")
 
         filename = self.get_filename(chunk_uuid)
-        self.chunks[chunk_uuid] = filename
+        self.chunks[str(chunk_uuid)] = filename
         
         with open(filename, "wb") as f:
             f.write(data)
 
     def exposed_read(self, chunk_uuid):
-        log.info(f"Reading chunk {chunk_uuid}")
+        log.info(f"Reading chunk {str(chunk_uuid)}")
 
-        with open(self.chunks[chunk_uuid], "rb") as f:
+        filename = self.chunks[str(chunk_uuid)]
+        
+        with open(filename, "rb") as f:
             data = f.read()
 
         return data
 
+    def exposed_get_state(self):
+        # self.check_files()
+
+        return {"chunks": len(self.chunks)}
+
+    def check_files(self):
+        for chunk in [key for key in self.chunks]:
+            if not os.path.exists(self.get_filename(chunk)):
+                del self.chunks[chunk]
+
     def get_filename(self, chunk_uuid):
+        # breakpoint()
         filename = os.path.join(self.loc, str(chunk_uuid) + ".gfss")
 
         # log.info(f"Creating filename {filename}")

@@ -16,6 +16,7 @@ def get_sensei():
         return rpyc.connect("localhost", 33333).root
     except ConnectionRefusedError:
         log.error("Sensei refused connection.")
+        click.echo("Server refusing connection.")
 
 
 def get_chunk(ip, port):
@@ -161,16 +162,39 @@ def put(filename):
         chunks_locs = sensei.get_chunk_location(list(chunks_uuid))
         chunk_size = sensei.get_chunk_size()
 
-        with open(os.path.join(FILE_PATH, "test_file.txt"), "rb") as f:
-            for chunk_uuid in chunks_uuid:
+        with open(os.path.join(FILE_PATH, filename), "rb") as f:
+            for uuid in chunks_uuid:
                 data = f.read(chunk_size)
 
-                for loc in chunks_locs[chunk_uuid]:
+                for loc in chunks_locs[uuid]:
                     chunk = get_chunk(*loc)
 
-                    chunk.write(chunk_uuid, data)
+                    chunk.write(uuid, data)
 
 
+@dfs.command()
+@click.argument("filename")
+def get(filename):
+    "Get file from DFSs"
+
+    sensei = get_sensei()
+
+    if sensei:
+        chunks_uuid = sensei.read_file(make_path(filename))
+        chunks_uuid = {k:chunks_uuid[k] for k in chunks_uuid}
+
+        chunks_locs = sensei.get_chunk_location(chunks_uuid.values())
+        file_data = []
+
+        with open(os.path.join(FILE_PATH, "new_" + filename), "wb") as f:
+            for key, uuid in chunks_uuid.items():
+                for loc in chunks_locs[uuid]:
+                    chunk = get_chunk(*loc)
+                    data = chunk.read(uuid)
+
+                    if data:
+                        f.write(data)
+                        break
 
 
 if __name__ == "__main__":
