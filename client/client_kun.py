@@ -188,13 +188,7 @@ def get(filename):
     chunks_locs = sensei.get_chunk_location(chunks_uuid.values())
     file_data = []
 
-    if not os.path.exists(os.path.join(DIR_PATH, "saved_files")):
-        os.mkdir(os.path.join(DIR_PATH, "saved_files"))
-
-    save_path = os.path.join(DIR_PATH, "saved_files", *file_path.split('/')[:-1])
-
-    if not os.path.exists(save_path):
-        os.makedirs(save_path)
+    save_path = create_save_folder(file_path)
 
     with open(os.path.join(save_path, file_path.split('/')[-1]), "wb") as f:
         for key, uuid in chunks_uuid.items():
@@ -205,6 +199,18 @@ def get(filename):
                 if data:
                     f.write(data)
                     break
+
+
+def create_save_folder(file_path):
+    if not os.path.exists(os.path.join(DIR_PATH, "saved_files")):
+        os.mkdir(os.path.join(DIR_PATH, "saved_files"))
+
+    save_path = os.path.join(DIR_PATH, "saved_files", *file_path.split('/')[:-1])
+
+    if not os.path.exists(save_path):
+        os.makedirs(save_path)
+
+    return save_path
 
 
 if __name__ == "__main__":
