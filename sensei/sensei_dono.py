@@ -35,9 +35,9 @@ class SenseiService(rpyc.Service):
         self.chunk_locations = {}
         self.chunk_servers = {
             ("localhost", 40001): {"chunks": 0},
-            # ("localhost", 40002): {"chunks": 0},
-            # ("localhost", 40003): {"chunks": 0},
-            # ("localhost", 40004): {"chunks": 0},
+            ("localhost", 40002): {"chunks": 0},
+            ("localhost", 40003): {"chunks": 0},
+            ("localhost", 40004): {"chunks": 0},
         }
 
         # self.chunk_size = 64_000_000

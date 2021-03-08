@@ -8,7 +8,7 @@ import rpyc
 logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger("client-kun")
 
-FILE_PATH = os.path.dirname(os.path.realpath(__file__))
+DIR_PATH = os.path.dirname(os.path.realpath(__file__))
 
 
 def get_sensei():
@@ -27,17 +27,17 @@ def get_chunk(ip, port):
 
 
 def save_cache(data):
-    with open(os.path.join(FILE_PATH, "cache.json"), "w") as f:
+    with open(os.path.join(DIR_PATH, "cache.json"), "w") as f:
         json.dump(data, f)
 
     # breakpoint()
 
 
 def get_cache():
-    if not os.path.exists(os.path.join(FILE_PATH, "cache.json")):
-        return None
+    if not os.path.exists(os.path.join(DIR_PATH, "cache.json")):
+        save_cache({"pwd": "/", "user": "temp"}) 
 
-    with open(os.path.join(FILE_PATH, "cache.json"), "r") as f:
+    with open(os.path.join(DIR_PATH, "cache.json"), "r") as f:
         data = json.load(f)
 
     return data
@@ -61,7 +61,7 @@ def make_path(name):
 @click.group()
 def dfs():
     """CLI for client DFS"""
-    if not os.path.exists(os.path.join(FILE_PATH, "cache.json")):
+    if not os.path.exists(os.path.join(DIR_PATH, "cache.json")):
         new_user()
 
 
@@ -162,7 +162,7 @@ def put(filename):
         chunks_locs = sensei.get_chunk_location(list(chunks_uuid))
         chunk_size = sensei.get_chunk_size()
 
-        with open(os.path.join(FILE_PATH, filename), "rb") as f:
+        with open(os.path.join(DIR_PATH, filename), "rb") as f:
             for uuid in chunks_uuid:
                 data = f.read(chunk_size)
 
@@ -178,23 +178,33 @@ def get(filename):
     "Get file from DFSs"
 
     sensei = get_sensei()
+    if not sensei:
+        return None
 
-    if sensei:
-        chunks_uuid = sensei.read_file(make_path(filename))
-        chunks_uuid = {k:chunks_uuid[k] for k in chunks_uuid}
+    file_path = make_path(filename)
+    chunks_uuid = sensei.read_file(file_path)
+    chunks_uuid = {k:chunks_uuid[k] for k in chunks_uuid}
 
-        chunks_locs = sensei.get_chunk_location(chunks_uuid.values())
-        file_data = []
+    chunks_locs = sensei.get_chunk_location(chunks_uuid.values())
+    file_data = []
 
-        with open(os.path.join(FILE_PATH, "new_" + filename), "wb") as f:
-            for key, uuid in chunks_uuid.items():
-                for loc in chunks_locs[uuid]:
-                    chunk = get_chunk(*loc)
-                    data = chunk.read(uuid)
+    if not os.path.exists(os.path.join(DIR_PATH, "saved_files")):
+        os.mkdir(os.path.join(DIR_PATH, "saved_files"))
 
-                    if data:
-                        f.write(data)
-                        break
+    save_path = os.path.join(DIR_PATH, "saved_files", *file_path.split('/')[:-1])
+
+    if not os.path.exists(save_path):
+        os.makedirs(save_path)
+
+    with open(os.path.join(save_path, file_path.split('/')[-1]), "wb") as f:
+        for key, uuid in chunks_uuid.items():
+            for location in chunks_locs[uuid]:
+                chunk = get_chunk(*location)
+                data = chunk.read(uuid)
+
+                if data:
+                    f.write(data)
+                    break
 
 
 if __name__ == "__main__":

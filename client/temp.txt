@@ -1,4 +1,0 @@
-===================
-dict_values([UUID('f9e92536-76b1-11eb-9237-1c1bb5a1b3dc')])
-{UUID('f9e92536-76b1-11eb-9237-1c1bb5a1b3dc'): [('localhost', 40001), ('localhost', 40002), ('localhost', 40003)]}
-===================
