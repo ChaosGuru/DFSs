@@ -112,7 +112,7 @@ class SenseiService(rpyc.Service):
 
         # add chunkuuids for each chunk
         for i in range(math.ceil(size/self.chunk_size)):
-            chunk_uuid = uuid.uuid1()
+            chunk_uuid = uuid.uuid4()
 
             log.debug(f"Chunk index: {i}\n Chunk uuid: {chunk_uuid}")
 
