@@ -147,7 +147,7 @@ class SenseiService(rpyc.Service):
         self.files[path.rstrip("/")] = {}
         return path.rstrip("/")
 
-    def exposed_get_namespaces(self, path="/"):
+    def exposed_get_namespaces(self, path):
         return [
             ns for ns in self.files.keys()
             if not ns.startswith("/hidden") and ns.startswith(path.rstrip("/") + "/")
@@ -177,6 +177,9 @@ class SenseiService(rpyc.Service):
 
             del self.files[key]
 
+    def on_connect(self, conn):
+        log.info("♦♦♦♦♦♦♦♦♦♦CONNECTION♦♦♦♦♦♦♦♦♦♦")
+
     def on_disconnect(self, conn):
         log.info("♦♦♦♦♦♦♦♦♦♦DISCONNECTION♦♦♦♦♦♦♦♦♦♦")
 
@@ -184,11 +187,11 @@ class SenseiService(rpyc.Service):
         self.collect_garbage()
         self.save_snapshot()
 
-        pprint(self.files)
-        pprint(self.chunk_locations)
-        pprint(self.chunk_servers)
+        # pprint(self.files)
+        # pprint(self.chunk_locations)
+        # pprint(self.chunk_servers)
 
 
 if __name__ == "__main__":
-    server = ThreadedServer(SenseiService(), port=33333)
+    server = ThreadedServer(SenseiService(), port=33333, authenticator=SenseiService.validate)
     server.start()

@@ -12,6 +12,8 @@ DIR_PATH = os.path.dirname(os.path.realpath(__file__))
 
 
 def get_sensei():
+    data = get_metadata()
+
     try:
         return rpyc.connect("localhost", 33333).root
     except ConnectionRefusedError:
@@ -26,31 +28,23 @@ def get_chunk(ip, port):
         log.error("Chunk refused connection.")
 
 
-def save_cache(data):
-    with open(os.path.join(DIR_PATH, "cache.json"), "w") as f:
+def save_metadata(data):
+    with open(os.path.join(DIR_PATH, "metadata.json"), "w") as f:
         json.dump(data, f)
 
-    # breakpoint()
 
+def get_metadata():
+    if not os.path.exists(os.path.join(DIR_PATH, "metadata.json")):
+        save_metadata({"pwd": "/", "user": "user_uuid"}) 
 
-def get_cache():
-    if not os.path.exists(os.path.join(DIR_PATH, "cache.json")):
-        save_cache({"pwd": "/", "user": "temp"}) 
-
-    with open(os.path.join(DIR_PATH, "cache.json"), "r") as f:
+    with open(os.path.join(DIR_PATH, "metadata.json"), "r") as f:
         data = json.load(f)
 
     return data
 
 
-def new_user():
-    cache = {"pwd": "/", "user": "temp"}
-
-    save_cache(cache)
-
-
 def make_path(name):
-    pwd = get_cache()["pwd"]
+    pwd = get_metadata()["pwd"]
 
     if name.startswith('/'):
         return name
@@ -61,14 +55,15 @@ def make_path(name):
 @click.group()
 def dfs():
     """CLI for client DFS"""
-    if not os.path.exists(os.path.join(DIR_PATH, "cache.json")):
-        new_user()
+
+    # create new user metadata if not exists
+    # get_metadata()
 
 
 @dfs.command()
 def pwd():
     """Prints current directory"""
-    data = get_cache()
+    data = get_metadata()
     click.echo(data["pwd"])
 
 
@@ -79,8 +74,8 @@ def ls(path):
     sensei = get_sensei()
 
     if sensei:
-        data = get_cache()
-        res = sensei.get_namespaces(make_path(path))
+        data = get_metadata()
+        res = sensei.get_namespaces(make_path(path), data["user"])
         res = [r.replace(data["pwd"], "", 1).lstrip("/").split("/")[0] 
             for r in res]
 
@@ -119,7 +114,7 @@ def mkdir(name):
 @click.argument("path")
 def cd(path):
     """Changes working directory"""
-    cache = get_cache()
+    cache = get_metadata()
     sensei = get_sensei()
 
     if sensei:
@@ -132,7 +127,7 @@ def cd(path):
         else:
             click.echo("Error! Path do not exists!")
 
-        save_cache(cache)
+        save_metadata(cache)
         click.echo(cache["pwd"])
 
 
