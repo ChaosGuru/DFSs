@@ -110,15 +110,28 @@ cd client
 ```
 
 ### Example with client cli
+Print working directory
 ```bash
 $ python client_kun.py pwd
 /
+```
+Create directory
+```bash
 $ python client_kun.py mkdir example
 /example/
+```
+Print working directory contents
+```bash
 $ python client_kun.py ls
 example
+```
+Print working directory all namespaces
+```bash
 $ python client_kun.py tree
 /example/
+```
+Change working directory
+```bash
 $ python client_kun.py cd example2
 Error! Path do not exists!
 /
@@ -130,10 +143,16 @@ $ python client_kun.py ls
 
 $ python client_kun.py tree
 /example/
+```
+Change working directory to root
+```bash
 $ python client_kun.py cd /
 /
 $ python client_kun.py pwd
 /
+```
+Create new directories inside other directories
+```bash
 $ python client_kun.py mkdir example2
 /example2/
 $ python client_kun.py tree
@@ -151,6 +170,9 @@ $ python client_kun.py tree
 /example2/
 /example2/new/
 /example2/new2/
+```
+Change working directory to parent directory
+```bash
 $ python client_kun.py cd ..
 /
 $ python client_kun.py pwd
@@ -162,8 +184,14 @@ $ python client_kun.py tree
 /example2/new2/
 $ python client_kun.py ls
 example example2
+```
+Print contents of another directory
+```bash
 $ python client_kun.py ls example2
  new2 new
+```
+Remove namespace
+```bash
 $ python client_kun.py rm example2
 Removed 3 elements in namespace /example2/
 $ python client_kun.py tree
