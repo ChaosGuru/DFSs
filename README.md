@@ -98,6 +98,77 @@ pip install rpyc==5.0.1 click==7.1.2
 
 ## Demonstration
 
+To use the system you need:
+1. Start sensei server:
+```bash
+python server/sensei_dono.py 
+```
+2. Start chunk servers (write about it later)
+3. Enter client directory
+```bash
+cd client
+```
+
+### Example with client cli
+$ python client_kun.py pwd
+/
+$ python client_kun.py mkdir example
+/example/
+$ python client_kun.py ls
+example
+$ python client_kun.py tree
+/example/
+$ python client_kun.py cd example2
+Error! Path do not exists!
+/
+$ python client_kun.py cd example
+/example/
+$ python client_kun.py pwd
+/example/
+$ python client_kun.py ls
+
+$ python client_kun.py tree
+/example/
+$ python client_kun.py cd /
+/
+$ python client_kun.py pwd
+/
+$ python client_kun.py mkdir example2
+/example2/
+$ python client_kun.py tree
+/example/
+/example2/
+$ python client_kun.py cd example2
+/example2/
+$ python client_kun.py mkdir new
+/example2/new/
+$ python client_kun.py mkdir new2
+/example2/new2/
+$ python client_kun.py ls
+ new new2
+$ python client_kun.py tree
+/example2/
+/example2/new/
+/example2/new2/
+$ python client_kun.py cd ..
+/
+$ python client_kun.py pwd
+/
+$ python client_kun.py tree
+/example/
+/example2/
+/example2/new/
+/example2/new2/
+$ python client_kun.py ls
+example example2
+$ python client_kun.py ls example2
+ new2 new
+$ python client_kun.py rm example2
+Removed 3 elements in namespace /example2/
+$ python client_kun.py tree
+/example/
+$ python client_kun.py ls
+example
 
 
 ## Possible improvements
