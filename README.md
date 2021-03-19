@@ -110,6 +110,7 @@ cd client
 ```
 
 ### Example with client cli
+```bash
 $ python client_kun.py pwd
 /
 $ python client_kun.py mkdir example
@@ -169,6 +170,6 @@ $ python client_kun.py tree
 /example/
 $ python client_kun.py ls
 example
-
+```
 
 ## Possible improvements
