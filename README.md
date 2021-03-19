@@ -4,7 +4,7 @@ Distributed file system inspired by GFS.
 ## Table of contents
 - [How system should work](#how-system-should-work)
     - [Client](#client)
-    - [Master](#master)
+    - [Sensei](#sensei)
     - [Chunk](#chunk)
 - [Use cases](#use-cases)
     - [Client namespace manipulation](#client-namespace-manipulation)
@@ -14,9 +14,9 @@ Distributed file system inspired by GFS.
     - [Client append to file](#client-append-to-file)
     - [New chunk server](#new-chunk-server)
     - [Lost chunk server](#lost-chunk-server)
-    - [Master server restart](#master-server-restart)
+    - [Sensei server restart](#sensei-server-restart)
     - [Chunk server restart](#chunk-server-restart)
-    - [Periodical master server diagnostic](#periodical-master-server-diagnostic)
+    - [Periodical sensei server diagnostic](#periodical-sensei-server-diagnostic)
 - [Installation](#installation)
 - [Demonstration](#demonstration)
 - [Possible improvements](#possible-improvements)
@@ -24,20 +24,20 @@ Distributed file system inspired by GFS.
 
 ## How system should work
 There is a client on users PC.
-Also there is a master server on remote server.
+Also there is a sensei server on remote server.
 And there are a lot of file servers on different computers.
 
 ### Client
 Has CLI to work with file namespaces and get, put, delete, (append?) files.
 Has local file with user settings.
 
-### Master
+### Sensei
 Has all metadata about **files** (namespace: chunks uuid) and **chunks** (chunk uuid: replica locations).
-Conduct periodical diagnostic about chunk servers status.
+Conducts periodical diagnostic about chunk servers status.
 
 ### Chunk
 Has local chunk metadata (chunk uuid: file name).
-Report master after connection to network and periodical diagnostic.
+Report sensei after connection to network and periodical diagnostic.
 
 ## Use cases
 Here is a brief overview of system behavior.
@@ -46,7 +46,7 @@ Here is a brief overview of system behavior.
 Client use CLI to create, delete, print namespaces.
 Client related data is saved in metadata.json file.
 
-client-server communications:
+client-sensei server communications:
 - add namespace
 - delete namespace
 - get namespaces
@@ -71,11 +71,11 @@ client cli:
 
 ### Lost chunk server
 
-### Master server restart
+### Sensei server restart
 
 ### Chunk server restart
 
-### Periodical master server diagnostic
+### Periodical sensei server diagnostic
 
 
 ## Installation
@@ -90,8 +90,7 @@ git clone https://github.com/ChaosGuru/DFSs.git
 ```
 2. Install necessary packages
 ```bash
-rpyc==5.0.1
-click=7.1.2
+pip install rpyc==5.0.1 click==7.1.2
 ```
 
 **Ready**

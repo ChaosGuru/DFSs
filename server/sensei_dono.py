@@ -31,7 +31,7 @@ class SenseiService(rpyc.Service):
             os.path.dirname(os.path.realpath(__file__)), "snapshots"
         )
 
-        self.files = {}
+        self.namespaces = {}
         self.chunk_locations = {}
         self.chunk_servers = {
             ("localhost", 40001): {"chunks": 0},
@@ -72,7 +72,7 @@ class SenseiService(rpyc.Service):
         snapshot1 = os.path.join(self.SNAPSHOTS, "snapshot1.dat")
 
         with open(snapshot1, "wb") as f:
-            pickle.dump((self.files, self.chunk_locations), f)
+            pickle.dump((self.namespaces, self.chunk_locations), f)
 
     def load_snapshot(self):
         """Loads snapshot of a filesystem from a file.
@@ -86,7 +86,7 @@ class SenseiService(rpyc.Service):
 
         if os.path.exists(snapshot1):
             with open(snapshot1, "rb") as f:
-                self.files, self.chunk_locations = pickle.load(f)
+                self.namespaces, self.chunk_locations = pickle.load(f)
 
     def valid_path(self, path):
         if path.count("//") > 0:
@@ -116,17 +116,17 @@ class SenseiService(rpyc.Service):
 
             log.debug(f"Chunk index: {i}\n Chunk uuid: {chunk_uuid}")
 
-            self.files[path][i] = chunk_uuid
+            self.namespaces[path][i] = chunk_uuid
             self.chunk_locations[chunk_uuid] = \
                 self.alloc_chunks(self.replica_factor)
 
-        return self.files[path].values()
+        return self.namespaces[path].values()
 
     def exposed_read_file(self, path, chunk_index=-1):
         if chunk_index == -1:
-            return self.files[path]
+            return self.namespaces[path]
         else:
-            return {chunk_index: self.files[path][chunk_index]}
+            return {chunk_index: self.namespaces[path][chunk_index]}
 
     def exposed_get_chunk_location(self, chunks_uuid):
         log.info("Getting chunk locs")
@@ -139,43 +139,52 @@ class SenseiService(rpyc.Service):
         log.info(f"Creating directory {path}")
 
         if force:
-            self.exposed_remove_namespaces(path)
+            self.exposed_remove_namespace(path)
 
-        if not self.valid_path(path) or path.rstrip("/") in self.files:
+        if not self.valid_path(path) or path in self.namespaces:
             return None
 
-        self.files[path.rstrip("/")] = {}
-        return path.rstrip("/")
+        self.namespaces[path] = {}
+        return path
 
     def exposed_get_namespaces(self, path):
+        log.info(f"Getting namaspaces for {path}")
+        
         return [
-            ns for ns in self.files.keys()
-            if not ns.startswith("/hidden") and ns.startswith(path.rstrip("/") + "/")
+            ns for ns in self.namespaces.keys()
+                if not ns.startswith("/hidden") \
+                    and ns.startswith(path)
         ]
 
-    def exposed_remove_namespaces(self, path):
+    def exposed_remove_namespace(self, path):
         log.info(f"Removing namespace {path}")
+        count = 0
 
-        for ns in [key for key in self.files]:
+        for ns in [key for key in self.namespaces]:
             if ns.startswith(path) and not ns.startswith("/hidden"):
                 name = "/hidden" + ns + datetime.today().strftime("-%Y-%m-%d")
-                self.files[name] = self.files[ns]
-                del self.files[ns]
+                self.namespaces[name] = self.namespaces[ns]
+                del self.namespaces[ns]
+                count += 1
+
+        return count
 
     def exposed_exists(self, path):
-        return path in self.files
+        log.info(f"Check if exists {path}")
+
+        return path in self.namespaces
 
     # temp
     def collect_garbage(self):
         log.info("Collecting garbage...")
 
-        for key in [key for key in self.files if key.startswith("/hidden")]:
+        for key in [key for key in self.namespaces if key.startswith("/hidden")]:
             log.info(f"Deleting {key}...")
 
-            for chunk in self.files[key].values():
+            for chunk in self.namespaces[key].values():
                 del self.chunk_locations[chunk]
 
-            del self.files[key]
+            del self.namespaces[key]
 
     def on_connect(self, conn):
         log.info("♦♦♦♦♦♦♦♦♦♦CONNECTION♦♦♦♦♦♦♦♦♦♦")
@@ -187,11 +196,11 @@ class SenseiService(rpyc.Service):
         self.collect_garbage()
         self.save_snapshot()
 
-        # pprint(self.files)
+        # pprint(self.namespaces)
         # pprint(self.chunk_locations)
         # pprint(self.chunk_servers)
 
 
 if __name__ == "__main__":
-    server = ThreadedServer(SenseiService(), port=33333, authenticator=SenseiService.validate)
+    server = ThreadedServer(SenseiService(), port=33333)
     server.start()

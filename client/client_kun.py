@@ -46,10 +46,9 @@ def get_metadata():
 def make_path(name):
     pwd = get_metadata()["pwd"]
 
-    if name.startswith('/'):
-        return name
-    else:
-        return pwd.rstrip("/") + "/" + name
+    path = name if name.startswith('/') else pwd + name
+
+    return path.rstrip('/') + '/'
 
 
 @click.group()
@@ -75,9 +74,10 @@ def ls(path):
 
     if sensei:
         data = get_metadata()
-        res = sensei.get_namespaces(make_path(path), data["user"])
-        res = [r.replace(data["pwd"], "", 1).lstrip("/").split("/")[0] 
-            for r in res]
+        full_path = make_path(path)
+        namespaces = sensei.get_namespaces(full_path)
+
+        res = [r.replace(full_path, '', 1).split("/")[0] for r in namespaces]
 
         if res:
             click.echo(" ".join(set(res)))
@@ -109,39 +109,44 @@ def mkdir(name):
         else:
             click.echo("Error! Failed to create directory.")
 
+            if sensei.exists(dir_name):
+                click.echo("Path already exists!")
+
 
 @dfs.command()
 @click.argument("path")
 def cd(path):
     """Changes working directory"""
-    cache = get_metadata()
+    data = get_metadata()
     sensei = get_sensei()
 
     if sensei:
         if path == "/":
-            cache["pwd"] = "/"
+            data["pwd"] = "/"
         elif path == "..":
-            cache["pwd"] = "/" + "/".join(cache["pwd"].split("/")[:-1]).lstrip("/")
+            data["pwd"] = "/".join(data["pwd"].split("/")[:-2]) + '/'
         elif sensei.exists(make_path(path)):
-            cache["pwd"] = make_path(path)
+            data["pwd"] = make_path(path)
         else:
             click.echo("Error! Path do not exists!")
 
-        save_metadata(cache)
-        click.echo(cache["pwd"])
+        save_metadata(data)
+        click.echo(data["pwd"])
 
 
 @dfs.command()
-@click.argument("name")
-def rm(name):
+@click.argument("path")
+def rm(path):
     """Removes namespace"""
     sensei = get_sensei()
+    namespace = make_path(path)
 
     if sensei:
-        namespace = make_path(name)
-        sensei.remove_namespaces(namespace)
-
-        click.echo(f"Namespace {namespace} removed!")
+        if not sensei.exists(namespace):
+            click.echo("Error! Path do not exists!")
+        else: 
+            dels = sensei.remove_namespace(namespace)
+            click.echo(f"Removed {dels} elements in namespace {namespace}")
 
 
 @dfs.command()
