@@ -1,5 +1,6 @@
 from sys import argv
-import os
+from os import makedirs
+from os.path import join, dirname, realpath, exists
 import logging
 
 import rpyc
@@ -10,23 +11,26 @@ log = logging.getLogger("chunk-kun")
 
 
 class ChunkService(rpyc.Service):
-    """Chunk server for storing chunks of files
+    """
+    Chunk server for storing chunks of files
     """
 
     def __init__(self, name):
-        log.info(f"Creating chunk object with name {name}")
+        log.info(f"Starting chunk server {name}...")
 
         self.name = name
         self.chunks = {}
-        self.loc = os.path.join(os.path.dirname(os.path.realpath(__file__)), 
-                                "chunk_servers",
-                                name)
+        self.loc = join(dirname(realpath(__file__)), "chunk_servers", name)
 
-        if not os.path.exists(self.loc):
-            os.makedirs(self.loc)
+        if not exists(self.loc):
+            makedirs(self.loc)
+
+        # get status of their filesytem and all metadata
+
+        # ping sensei server
 
     def exposed_write(self, chunk_uuid, data):
-        log.info(f"Writing chunk {str(chunk_uuid)}")
+        log.info(f"Chunk server {self.name} writes chunk {str(chunk_uuid)}")
 
         filename = self.get_filename(chunk_uuid)
         self.chunks[str(chunk_uuid)] = filename
@@ -35,7 +39,7 @@ class ChunkService(rpyc.Service):
             f.write(data)
 
     def exposed_read(self, chunk_uuid):
-        log.info(f"Reading chunk {str(chunk_uuid)}")
+        log.info(f"Chunk server {self.name} reads chunk {str(chunk_uuid)}")
 
         filename = self.chunks[str(chunk_uuid)]
         
@@ -45,20 +49,12 @@ class ChunkService(rpyc.Service):
         return data
 
     def exposed_get_state(self):
-        # self.check_files()
-
         return {"chunks": len(self.chunks)}
 
-    def check_files(self):
-        for chunk in [key for key in self.chunks]:
-            if not os.path.exists(self.get_filename(chunk)):
-                del self.chunks[chunk]
-
     def get_filename(self, chunk_uuid):
-        # breakpoint()
-        filename = os.path.join(self.loc, str(chunk_uuid) + ".gfss")
+        log.debug(f"Chunk server {self.name} gets filename {str(chunk_uuid)}")
 
-        # log.info(f"Creating filename {filename}")
+        filename = join(self.loc, str(chunk_uuid) + ".gfss")
 
         return filename
 
