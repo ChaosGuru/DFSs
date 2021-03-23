@@ -15,10 +15,10 @@ def get_sensei():
     data = get_metadata()
 
     try:
-        return rpyc.connect("localhost", 33333).root
+        return rpyc.connect('localhost', 33333).root
     except ConnectionRefusedError:
-        log.error("Sensei refused connection.")
-        click.echo("Server refusing connection.")
+        log.error('Sensei refused connection.')
+        click.echo('Server refusing connection.')
 
 
 def get_chunk(ip, port):
@@ -162,6 +162,9 @@ def put(filename):
         chunks_locs = sensei.get_chunk_location(list(chunks_uuid))
         chunk_size = sensei.get_chunk_size()
 
+        log.debug("Chunk locations")
+        log.debug(chunks_locs)
+
         with open(os.path.join(DIR_PATH, filename), "rb") as f:
             for uuid in chunks_uuid:
                 data = f.read(chunk_size)
@@ -190,7 +193,7 @@ def get(filename):
 
     save_path = create_save_folder(file_path)
 
-    with open(os.path.join(save_path, file_path.split('/')[-1]), "wb") as f:
+    with open(os.path.join(save_path, file_path.split('/')[-2]), "wb") as f:
         for key, uuid in chunks_uuid.items():
             for location in chunks_locs[uuid]:
                 chunk = get_chunk(*location)
@@ -202,10 +205,10 @@ def get(filename):
 
 
 def create_save_folder(file_path):
-    if not os.path.exists(os.path.join(DIR_PATH, "saved_files")):
-        os.mkdir(os.path.join(DIR_PATH, "saved_files"))
+    # if not os.path.exists(os.path.join(DIR_PATH, "saved_files")):
+    #     os.mkdir(os.path.join(DIR_PATH, "saved_files"))
 
-    save_path = os.path.join(DIR_PATH, "saved_files", *file_path.split('/')[:-1])
+    save_path = os.path.join(DIR_PATH, "saved_files", *file_path.split('/')[:-2])
 
     if not os.path.exists(save_path):
         os.makedirs(save_path)

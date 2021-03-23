@@ -1,5 +1,5 @@
 from sys import argv
-from os import makedirs
+from os import makedirs, listdir
 from os.path import join, dirname, realpath, exists
 import logging
 
@@ -15,31 +15,30 @@ class ChunkService(rpyc.Service):
     Chunk server for storing chunks of files
     """
 
-    def __init__(self, name):
-        log.info(f"Starting chunk server {name}...")
-
-        self.name = name
+    def __init__(self, port):
+        self.port = port
         self.chunks = {}
-        self.loc = join(dirname(realpath(__file__)), "chunk_servers", name)
+        self.loc = join(dirname(realpath(__file__)), "chunk_servers", port)
 
         if not exists(self.loc):
             makedirs(self.loc)
 
-        # get status of their filesytem and all metadata
-
-        # ping sensei server
+        self.scan_filesystem()
+        self.greet_sensei()
 
     def exposed_write(self, chunk_uuid, data):
-        log.info(f"Chunk server {self.name} writes chunk {str(chunk_uuid)}")
+        log.info(f"Chunk server {self.port} writes chunk {str(chunk_uuid)}")
 
-        filename = self.get_filename(chunk_uuid)
+        filename = self.make_filename(chunk_uuid)
         self.chunks[str(chunk_uuid)] = filename
         
         with open(filename, "wb") as f:
             f.write(data)
 
+        self.updata_data_on_sensei()
+
     def exposed_read(self, chunk_uuid):
-        log.info(f"Chunk server {self.name} reads chunk {str(chunk_uuid)}")
+        log.info(f"Chunk server {self.port} reads chunk {str(chunk_uuid)}")
 
         filename = self.chunks[str(chunk_uuid)]
         
@@ -51,12 +50,44 @@ class ChunkService(rpyc.Service):
     def exposed_get_state(self):
         return {"chunks": len(self.chunks)}
 
-    def get_filename(self, chunk_uuid):
-        log.debug(f"Chunk server {self.name} gets filename {str(chunk_uuid)}")
+    def make_filename(self, chunk_uuid):
+        log.debug(f"Chunk server {self.port} makes filename {str(chunk_uuid)}")
 
-        filename = join(self.loc, str(chunk_uuid) + ".gfss")
+        filename = join(self.loc, str(chunk_uuid) + '.gfss')
 
         return filename
+
+    def scan_filesystem(self):
+        log.debug(f"Chunk server {self.port} file sytem scan")
+
+        files = listdir(self.loc)
+
+        for f in files:
+            self.chunks[f.rstrip('.gfss')] = f
+
+    def greet_sensei(self):
+        log.debug(f"Chunk server {self.port} greets sensei")
+
+        sensei = self.get_sensei()
+
+        if sensei:
+            sensei.register_chunk_server(int(self.port), len(self.chunks))
+
+    def updata_data_on_sensei(self):
+        log.debug(f"Chunk server {self.port} updates data on sensei")
+
+        sensei = self.get_sensei()
+
+        if sensei:
+            sensei.update_chunk_data(int(self.port), len(self.chunks))
+
+
+    def get_sensei(self):
+        try:
+            return rpyc.connect('localhost', 33333).root
+        except ConnectionRefusedError:
+            log.error('Sensei refused connection.')
+            return None
 
 
 if __name__=="__main__":

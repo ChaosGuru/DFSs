@@ -8,5 +8,5 @@ dist/
 
 .vscode/
 
-*.gfss
-*.dat
+chunk_servers/
+snapshots/

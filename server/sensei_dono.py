@@ -13,7 +13,7 @@ from rpyc.utils.server import ThreadedServer
 logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger("sensei-dono")
 
-logging.getLogger("SENSEI/33333").propagate = False
+# logging.getLogger("SENSEI/33333").propagate = False
 
 
 class SenseiService(rpyc.Service):
@@ -27,21 +27,15 @@ class SenseiService(rpyc.Service):
     def __init__(self):
         log.debug("Creating sensei object")
 
-        self.SNAPSHOTS = os.path.join(
+        self.snapshots_path = os.path.join(
             os.path.dirname(os.path.realpath(__file__)), "snapshots"
         )
 
         self.namespaces = {}
         self.chunk_locations = {}
-        self.chunk_servers = {
-            ("localhost", 40001): {"chunks": 0},
-            ("localhost", 40002): {"chunks": 0},
-            ("localhost", 40003): {"chunks": 0},
-            ("localhost", 40004): {"chunks": 0},
-        }
+        self.chunk_servers = {}
 
-        # self.chunk_size = 64_000_000
-        self.chunk_size = 500
+        self.chunk_size = 1000 # 64_000_000 
         self.replica_factor = 3
 
         self.load_snapshot()
@@ -69,7 +63,7 @@ class SenseiService(rpyc.Service):
 
         log.info("Saving snapshot...")
 
-        snapshot1 = os.path.join(self.SNAPSHOTS, "snapshot1.dat")
+        snapshot1 = os.path.join(self.snapshots_path, "snapshot1.dat")
 
         with open(snapshot1, "wb") as f:
             pickle.dump((self.namespaces, self.chunk_locations), f)
@@ -82,12 +76,13 @@ class SenseiService(rpyc.Service):
 
         log.info("Loading snapshot...")
 
-        snapshot1 = os.path.join(self.SNAPSHOTS, "snapshot1.dat")
+        snapshot1 = os.path.join(self.snapshots_path, "snapshot1.dat")
 
         if os.path.exists(snapshot1):
             with open(snapshot1, "rb") as f:
                 self.namespaces, self.chunk_locations = pickle.load(f)
 
+    # methods for client communication
     def valid_path(self, path):
         if path.count("//") > 0:
             return False
@@ -108,7 +103,7 @@ class SenseiService(rpyc.Service):
     def exposed_write_file(self, path, size):
         log.info(f"Write file on path {path} with size {size}")
 
-        self.exposed_create_directory(path, force=True)
+        self.exposed_create_directory(path)
 
         # add chunkuuids for each chunk
         for i in range(math.ceil(size/self.chunk_size)):
@@ -174,6 +169,17 @@ class SenseiService(rpyc.Service):
 
         return path in self.namespaces
 
+    # methods for chunk communication
+    def exposed_register_chunk_server(self, port, num_of_chunks):
+        log.info(f"New chunk server with port {port}, chunks {num_of_chunks}")
+
+        self.chunk_servers[('localhost', port)] = {'chunks': num_of_chunks}
+
+    def exposed_update_chunk_data(self, port, num_of_chunks):
+        log.debug(f"Chunk server {port} updates its data")
+
+        self.chunk_servers[('localhost', port)]['chunks'] = num_of_chunks
+
     # temp
     def collect_garbage(self):
         log.info("Collecting garbage...")
@@ -187,18 +193,12 @@ class SenseiService(rpyc.Service):
             del self.namespaces[key]
 
     def on_connect(self, conn):
-        log.info("♦♦♦♦♦♦♦♦♦♦CONNECTION♦♦♦♦♦♦♦♦♦♦")
+        pass
 
     def on_disconnect(self, conn):
-        log.info("♦♦♦♦♦♦♦♦♦♦DISCONNECTION♦♦♦♦♦♦♦♦♦♦")
-
         # self.diagnostic()
         self.collect_garbage()
         self.save_snapshot()
-
-        # pprint(self.namespaces)
-        # pprint(self.chunk_locations)
-        # pprint(self.chunk_servers)
 
 
 if __name__ == "__main__":
