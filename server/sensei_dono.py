@@ -87,12 +87,13 @@ class SenseiService(rpyc.Service):
     def exposed_get_chunk_size(self):
         return self.chunk_size
 
-    def exposed_write_file(self, path, size):
+    def exposed_write_file(self, path, size, force=False):
         log.info(f"Write file on path {path} with size {size}")
 
-        num_of_chunks = math.ceil(size/self.chunk_size)
+        if not self.exposed_create_directory(path, force):
+            return None
 
-        self.exposed_create_directory(path)
+        num_of_chunks = math.ceil(size/self.chunk_size)
 
         for i in range(num_of_chunks):
             chunk_uuid = uuid.uuid4()
@@ -125,11 +126,11 @@ class SenseiService(rpyc.Service):
     def exposed_create_directory(self, path, force=False):
         log.info(f"Creating directory {path}")
 
-        if force:
-            self.exposed_remove_namespace(path)
-
-        if not self.valid_path(path) or path in self.namespaces:
+        if (not force and path in self.namespaces) \
+                or not self.valid_path(path):
             return None
+
+        self.exposed_remove_namespace(path)
 
         self.namespaces[path] = {}
         return path

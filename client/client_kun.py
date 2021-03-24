@@ -20,12 +20,16 @@ def get_sensei():
         log.error('Sensei refused connection.')
         click.echo('Server refusing connection.')
 
+        return None
+
 
 def get_chunk(ip, port):
     try:
         return rpyc.connect(ip, port).root
     except ConnectionRefusedError:
         log.error("Chunk refused connection.")
+
+        return None
 
 
 def save_metadata(data):
@@ -150,32 +154,39 @@ def rm(path):
 
 
 @dfs.command()
-@click.argument("filename")
-def put(filename):
-    "Put file to DFSs"
+@click.option('--force', is_flag=True, help='Forces file writing.')
+@click.argument('filename')
+def put(filename, force):
+    """Put file to DFSs"""
 
     sensei = get_sensei()
     file_size = os.path.getsize(filename)
 
-    if sensei:
-        chunks_uuid = sensei.write_file(make_path(filename), file_size)
-        chunk_size = sensei.get_chunk_size()
+    if not sensei:
+        return None
 
-        with open(os.path.join(DIR_PATH, filename), "rb") as f:
-            for uuid in chunks_uuid:
-                data = f.read(chunk_size)
-                locs = sensei.get_chunk_location(uuid)
+    chunks_uuid = sensei.write_file(make_path(filename), file_size, force)
+    chunk_size = sensei.get_chunk_size()
 
-                for loc in locs:
-                    chunk = get_chunk(*loc)
+    if not chunks_uuid:
+        click.echo('Server refused file writing.')
+        return None
 
-                    chunk.write(uuid, data)
+    with open(os.path.join(DIR_PATH, filename), 'rb') as f:
+        for uuid in chunks_uuid:
+            data = f.read(chunk_size)
+            locs = sensei.get_chunk_location(uuid)
+
+            for loc in locs:
+                chunk = get_chunk(*loc)
+
+                chunk.write(uuid, data)
 
 
 @dfs.command()
-@click.argument("filename")
+@click.argument('filename')
 def get(filename):
-    "Get file from DFSs"
+    'Get file from DFSs'
 
     sensei = get_sensei()
     if not sensei:
@@ -185,15 +196,15 @@ def get(filename):
     chunks_uuid = sensei.read_file(file_path)
     chunks_uuid = {k:chunks_uuid[k] for k in chunks_uuid}
 
-    chunks_locs = sensei.get_chunk_location(chunks_uuid.values())
-    file_data = []
 
     save_path = create_save_folder(file_path)
 
     with open(os.path.join(save_path, file_path.split('/')[-2]), "wb") as f:
         for key, uuid in chunks_uuid.items():
-            for location in chunks_locs[uuid]:
-                chunk = get_chunk(*location)
+            locs = sensei.get_chunk_location(uuid)
+
+            for loc in locs:
+                chunk = get_chunk(*loc)
                 data = chunk.read(uuid)
 
                 if data:
