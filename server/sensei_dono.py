@@ -40,21 +40,6 @@ class SenseiService(rpyc.Service):
 
         self.load_snapshot()
 
-    def get_chunk(self, ip, port):
-        try:
-            return rpyc.connect(ip, port).root
-        except ConnectionRefusedError:
-            log.error("Chunk refused connection")
-
-    def diagnostic(self):
-        log.info("Chunk servers diagnostic")
-
-        for chunk in self.chunk_servers:
-            chunk_server = self.get_chunk(*chunk)
-            state = chunk_server.get_state()
-
-            self.chunk_servers[chunk].update({a:state[a] for a in list(state)})
-
     def save_snapshot(self):
         """Save snaphot of filesystem to a file (temporary).
         Later change to save to backup server.
@@ -82,6 +67,7 @@ class SenseiService(rpyc.Service):
             with open(snapshot1, "rb") as f:
                 self.namespaces, self.chunk_locations = pickle.load(f)
 
+
     # methods for client communication
     def valid_path(self, path):
         if path.count("//") > 0:
@@ -92,9 +78,10 @@ class SenseiService(rpyc.Service):
     def alloc_chunks(self, num):
         log.info("Allocating chunks")
 
-        chunk_servers = sorted(self.chunk_servers, 
-                               key=lambda x: self.chunk_servers[x]["chunks"])
-        
+        chunk_servers = sorted(
+            self.chunk_servers, 
+            key=lambda x: self.chunk_servers[x]["chunks"])
+
         return chunk_servers[:num]
 
     def exposed_get_chunk_size(self):
@@ -103,17 +90,16 @@ class SenseiService(rpyc.Service):
     def exposed_write_file(self, path, size):
         log.info(f"Write file on path {path} with size {size}")
 
+        num_of_chunks = math.ceil(size/self.chunk_size)
+
         self.exposed_create_directory(path)
 
-        # add chunkuuids for each chunk
-        for i in range(math.ceil(size/self.chunk_size)):
+        for i in range(num_of_chunks):
             chunk_uuid = uuid.uuid4()
 
             log.debug(f"Chunk index: {i}\n Chunk uuid: {chunk_uuid}")
 
             self.namespaces[path][i] = chunk_uuid
-            self.chunk_locations[chunk_uuid] = \
-                self.alloc_chunks(self.replica_factor)
 
         return self.namespaces[path].values()
 
@@ -123,12 +109,18 @@ class SenseiService(rpyc.Service):
         else:
             return {chunk_index: self.namespaces[path][chunk_index]}
 
-    def exposed_get_chunk_location(self, chunks_uuid):
+    def exposed_get_chunk_location(self, chunk_uuid):
         log.info("Getting chunk locs")
-        
-        chunks_locs = {ch: self.chunk_locations[ch] for ch in chunks_uuid}
 
-        return chunks_locs
+        live_locations = self.chunk_locations.get(chunk_uuid, None)
+        
+        if not live_locations:
+            self.chunk_locations[chunk_uuid] = self.alloc_chunks(
+                self.replica_factor)
+        elif len(live_locations) != 3:
+            self.alloc_chunks(self.replica_factor-live_locations)
+
+        return self.chunk_locations[chunk_uuid]
 
     def exposed_create_directory(self, path, force=False):
         log.info(f"Creating directory {path}")
@@ -179,6 +171,16 @@ class SenseiService(rpyc.Service):
         log.debug(f"Chunk server {port} updates its data")
 
         self.chunk_servers[('localhost', port)]['chunks'] = num_of_chunks
+
+    def get_chunk(self, ip, port):
+        try:
+            return rpyc.connect(ip, port).root
+        except ConnectionRefusedError:
+            log.error("Chunk refused connection")
+
+    def diagnostic(self):
+        pass
+    
 
     # temp
     def collect_garbage(self):

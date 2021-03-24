@@ -16,6 +16,8 @@ class ChunkService(rpyc.Service):
     """
 
     def __init__(self, port):
+        logging.getLogger("CHUNK/%s" % port).propagate = False
+
         self.port = port
         self.chunks = {}
         self.loc = join(dirname(realpath(__file__)), "chunk_servers", port)
@@ -58,7 +60,7 @@ class ChunkService(rpyc.Service):
         return filename
 
     def scan_filesystem(self):
-        log.debug(f"Chunk server {self.port} file sytem scan")
+        log.debug(f"Chunk server {self.port} file system scan")
 
         files = listdir(self.loc)
 

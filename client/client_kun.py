@@ -159,17 +159,14 @@ def put(filename):
 
     if sensei:
         chunks_uuid = sensei.write_file(make_path(filename), file_size)
-        chunks_locs = sensei.get_chunk_location(list(chunks_uuid))
         chunk_size = sensei.get_chunk_size()
-
-        log.debug("Chunk locations")
-        log.debug(chunks_locs)
 
         with open(os.path.join(DIR_PATH, filename), "rb") as f:
             for uuid in chunks_uuid:
                 data = f.read(chunk_size)
+                locs = sensei.get_chunk_location(uuid)
 
-                for loc in chunks_locs[uuid]:
+                for loc in locs:
                     chunk = get_chunk(*loc)
 
                     chunk.write(uuid, data)
