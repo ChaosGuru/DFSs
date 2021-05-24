@@ -159,20 +159,23 @@ def rm(path):
 def put(filename, force):
     """Put file to DFSs"""
 
+    if not filename.startswith('/'):
+        filename = os.path.join(DIR_PATH, filename)
+
     sensei = get_sensei()
     file_size = os.path.getsize(filename)
 
     if not sensei:
         return None
 
-    chunks_uuid = sensei.write_file(make_path(filename), file_size, force)
+    chunks_uuid = sensei.write_file(make_path(filename.split('/')[-1]), file_size, force)
     chunk_size = sensei.get_chunk_size()
 
     if not chunks_uuid:
         click.echo('Server refused file writing.')
         return None
 
-    with open(os.path.join(DIR_PATH, filename), 'rb') as f:
+    with open(filename, 'rb') as f:
         for uuid in chunks_uuid:
             data = f.read(chunk_size)
             locs = sensei.get_chunk_location(uuid)
