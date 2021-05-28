@@ -1,1 +1,0 @@
-Text for saving in distributed file system.

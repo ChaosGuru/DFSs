@@ -12,8 +12,6 @@ DIR_PATH = os.path.dirname(os.path.realpath(__file__))
 
 
 def get_sensei():
-    data = get_metadata()
-
     try:
         return rpyc.connect('localhost', 33333).root
     except ConnectionRefusedError:
@@ -28,7 +26,6 @@ def get_chunk(ip, port):
         return rpyc.connect(ip, port).root
     except ConnectionRefusedError:
         log.error("Chunk refused connection.")
-
         return None
 
 
@@ -183,7 +180,8 @@ def put(filename, force):
             for loc in locs:
                 chunk = get_chunk(*loc)
 
-                chunk.write(uuid, data)
+                if chunk:
+                    chunk.write(uuid, data)
 
 
 @dfs.command()

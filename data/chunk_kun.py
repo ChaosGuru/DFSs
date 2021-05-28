@@ -2,6 +2,7 @@ from sys import argv
 from os import makedirs, listdir
 from os.path import join, dirname, realpath, exists
 import logging
+import pickle
 
 import rpyc
 from rpyc.utils.server import ThreadedServer
@@ -37,7 +38,7 @@ class ChunkService(rpyc.Service):
         with open(filename, "wb") as f:
             f.write(data)
 
-        self.updata_data_on_sensei()
+        self.update_data_on_sensei()
 
     def exposed_read(self, chunk_uuid):
         log.info(f"Chunk server {self.port} reads chunk {str(chunk_uuid)}")
@@ -48,6 +49,18 @@ class ChunkService(rpyc.Service):
             data = f.read()
 
         return data
+
+    def exposed_copy(self, locs, uuid):
+        filename = self.chunks[str(uuid)]
+
+        with open(filename, "rb") as f:
+            data = f.read()
+
+        for loc in locs:
+            serv = self.get_chunk(*loc)
+
+            if serv:
+                serv.write(uuid, data)
 
     def exposed_get_state(self):
         return {"chunks": len(self.chunks)}
@@ -73,9 +86,12 @@ class ChunkService(rpyc.Service):
         sensei = self.get_sensei()
 
         if sensei:
-            sensei.register_chunk_server(int(self.port), len(self.chunks))
+            sensei.register_chunk_server(
+                int(self.port), 
+                pickle.dumps(self.chunks)
+            )
 
-    def updata_data_on_sensei(self):
+    def update_data_on_sensei(self):
         log.debug(f"Chunk server {self.port} updates data on sensei")
 
         sensei = self.get_sensei()
@@ -83,12 +99,18 @@ class ChunkService(rpyc.Service):
         if sensei:
             sensei.update_chunk_data(int(self.port), len(self.chunks))
 
-
     def get_sensei(self):
         try:
             return rpyc.connect('localhost', 33333).root
         except ConnectionRefusedError:
             log.error('Sensei refused connection.')
+            return None
+
+    def get_chunk(self, ip, port):
+        try:
+            return rpyc.connect(ip, port).root
+        except ConnectionRefusedError:
+            log.error("Chunk refused connection.")
             return None
 
 
