@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DFSs monitoring</title>
+	<link rel="stylesheet" href="https://unpkg.com/primitive-ui/dist/css/main.css">
+	<style>
+		main {
+			margin: 0 auto;
+		}
+		.ok {
+			color: green;
+		}
+		.error {
+			color: brown;
+		}
+	</style>
+</head>
+<body>
+	<main class="container">
+		<h1>Distributed file system state</h1>
+		<div id="other">
+			<h3>System settings</h3>
+			<p>Chunk size - {{ data['chunk_size'] }}</p>
+			<p>Replica factor - {{ data['replica_factor'] }}</p>
+		</div>
+		<div class="flex-row">
+			<div id="namespaces" class="flex-large">
+				<h3>Namespaces</h3>
+				<table class="striped-table">
+					<thead>
+						<tr>
+							<th>Namespace</th>
+							<th>Chunks</th>
+						</tr>
+					</thead>
+					<tbody>
+						{% for n, c in data['namespaces'].items() %}
+							<tr>
+								<td>{{ n }}</td>
+								<td>{{ c }}</td>
+							</tr>
+						{% endfor %}
+					</tbody>
+				</table>
+			</div>
+			<div id="replicas" class="flex-large">
+				<h3>Replicas</h3>
+				<table>
+					<thead>
+						<tr>
+							<th>Chunk</th>
+							<th>Location</th>
+						</tr>
+					</thead>
+					<tbody>
+						{% for c, loc in data['chunk_locations'].items() %}
+							<tr>
+								<td>{{ c }}</td>
+								<td>
+									{% for l in loc %}
+										{{ l[0] }}:{{l[1]}}, 
+									{% endfor %}
+								</td>
+							</tr>
+						{% endfor %}
+					</tbody>
+				</table>
+			</div>
+		</div>
+		<div id="servers">
+			<h3>Chunk servers</h3>
+			<table class="striped-table">
+				<thead>
+					<tr>
+						<th>Server</th>
+						<th>Chunks</th>
+						<th>Status</th>
+					</tr>
+				</thead>
+				<tbody>
+					{% for s, d in data['chunk_servers'].items() %}
+						<tr>
+							<td>{{ s[0]}}:{{ s[1] }}</td>
+							{% if d['status'] == True %}
+								<td>{{ d['chunks'] }}</td>
+								<td class="ok">OK</td>
+							{% else %}
+								<td>???</td>
+								<td class="error">Error</td>
+							{% endif %}
+						</tr>
+					{% endfor %}
+				</tbody>
+			</table>
+		</div>
+	</main>
+</body>
+</html>

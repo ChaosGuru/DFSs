@@ -68,7 +68,7 @@ class ChunkService(rpyc.Service):
     def make_filename(self, chunk_uuid):
         log.debug(f"Chunk server {self.port} makes filename {str(chunk_uuid)}")
 
-        filename = join(self.loc, str(chunk_uuid) + '.dfss')
+        filename = join(self.loc, str(chunk_uuid) + '.gfss')
 
         return filename
 
@@ -78,7 +78,7 @@ class ChunkService(rpyc.Service):
         files = listdir(self.loc)
 
         for f in files:
-            self.chunks[f.rstrip('.dfss')] = f
+            self.chunks[f.rstrip('.gfss')] = f
 
     def greet_sensei(self):
         log.debug(f"Chunk server {self.port} greets sensei")

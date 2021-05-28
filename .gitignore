@@ -10,3 +10,5 @@ dist/
 
 chunk_servers/
 snapshots/
+
+*.zip
